@@ -34,18 +34,20 @@ public class FieldHeadingDriveCommand extends CommandBase {
     this.drivetrainSubsystem = drivetrainSubsystem;
 
     // FIXME set theta constraints
-    TrapezoidProfile.Constraints kThetaControllerConstraints = new TrapezoidProfile.Constraints(Math.PI, Math.PI);
+    TrapezoidProfile.Constraints kThetaControllerConstraints = 
+      new TrapezoidProfile.Constraints(Math.PI * 4, 2 * Math.PI);
     
     // FIXME set theta PID values
-    thetaController = new ProfiledPIDController(1, 0, 0, kThetaControllerConstraints);
+    thetaController = new ProfiledPIDController(8, 0, 0, kThetaControllerConstraints);
     thetaController.enableContinuousInput(-Math.PI, Math.PI);
+    thetaController.setTolerance(Units.degreesToRadians(3));
 
     addRequirements(drivetrainSubsystem);
   }
 
   @Override
   public void initialize() {
-    thetaController.reset(drivetrainSubsystem.getGyroscopeRotation().getRadians());
+    thetaController.reset(drivetrainSubsystem.getCurrentPose().getRotation().getRadians());
   }
 
   @Override
@@ -54,17 +56,23 @@ public class FieldHeadingDriveCommand extends CommandBase {
     double heading;
     if (omegaXSupplier.getAsDouble() == 0 && omegaYSupplier.getAsDouble() == 0) {
       // Hold heading when stick is centered
-      heading = drivetrainSubsystem.getGyroscopeRotation().getRadians();
+      heading = drivetrainSubsystem.getCurrentPose().getRotation().getRadians();
     } else {
       // Use X and Y and calculate an angular heading
       heading = Math.atan2(omegaYSupplier.getAsDouble(), omegaXSupplier.getAsDouble()) + (Math.PI / 2.0);
+      heading = -heading;
       heading = Math.IEEEremainder(heading, 2*Math.PI);
     }
     SmartDashboard.putNumber("Heading", Units.radiansToDegrees(heading));
 
-    var omega = thetaController.calculate(drivetrainSubsystem.getGyroscopeRotation().getRadians(), heading);
+    var omega = thetaController.calculate(drivetrainSubsystem.getCurrentPose().getRotation().getRadians(), heading);
+    if (thetaController.atGoal() || (omegaXSupplier.getAsDouble() == 0 && omegaYSupplier.getAsDouble() == 0)) {
+      omega = 0;
+    }
 
-    drivetrainSubsystem.drive(new ChassisSpeeds(xSupplier.getAsDouble(), ySupplier.getAsDouble(), omega));
+    drivetrainSubsystem.drive(
+      ChassisSpeeds.fromFieldRelativeSpeeds(
+        xSupplier.getAsDouble(), ySupplier.getAsDouble(), omega, drivetrainSubsystem.getGyroscopeRotation()));
   }
 
   @Override

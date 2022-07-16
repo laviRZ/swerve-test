@@ -49,7 +49,7 @@ public class RobotContainer {
     //         () -> -modifyAxis(m_controller.getRightX()) * DrivetrainSubsystem.MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND / 2
     // ));
     m_drivetrainSubsystem.setDefaultCommand(new FieldHeadingDriveCommand(
-      () -> modifyAxis(m_controller.getLeftX()),
+      () -> modifyAxis(-m_controller.getLeftX()),
       () -> modifyAxis(m_controller.getLeftY()),
       () -> modifyAxis(m_controller.getRightX()),
       () -> modifyAxis(m_controller.getRightY()), 
